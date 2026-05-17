@@ -22,7 +22,32 @@ uint8_t SBox[16][16] = {
     {0x8c,0xa1,0x89,0x0d,0xbf,0xe6,0x42,0x68,0x41,0x99,0x2d,0x0f,0xb0,0x54,0xbb,0x16}
 };
 
+uint8_t mixColumnsMatrix[4][4] = {
+    {0x02, 0x03, 0x01, 0x01},
+    {0x01, 0x02, 0x03, 0x01},
+    {0x01, 0x01, 0x02, 0x03},
+    {0x03, 0x01, 0x01, 0x02}
+};
+
 uint8_t stateArray[4][4] = {};     // To be taken from user input
+
+// --------------------------------------------------------------------
+// Functions for Polynomial Multiplication ( Made with the help of GPT )
+uint8_t xtime(uint8_t x){
+    return (x & 0x80) ? ((x << 1) ^ 0x1b) : (x << 1);
+}
+
+uint8_t mul(uint8_t a, uint8_t b){
+    if (a == 1) return b;
+    if (a == 2) return xtime(b);
+    if (a == 3) return xtime(b) ^ b;
+    return 0;
+}
+// --------------------------------------------------------------------
+
+void addRoundKey(){
+
+}
 
 void substituteBytes(){
 
@@ -57,5 +82,38 @@ void shiftRows(){
             stateArray[i][j] = tempStateArray[i][j];
         }
     } 
+
+}
+
+void mixColumns(){
+
+    uint8_t product = 0;
+
+    uint8_t tempStateArray[4][4];
+
+    for (int i = 0; i < 4; i++){
+        for (int j = 0; j < 4; j++){
+          
+            product = 0;
+
+            for (int k = 0; k < 4; k++){
+                
+                // product += mixColumnsMatrix[j][k] * stateArray[k][i]; This is Wrong. AES Multiplication is not like normal Multiplication we do. Its polynomial based.
+                product ^= mul(mixColumnsMatrix[j][k], stateArray[k][i]);
+
+            }
+
+            tempStateArray[j][i] = product; 
+
+        }
+    }
+
+    for (int i = 0; i < 4; i++){
+        for (int j = 0; j < 4; j++){
+            stateArray[i][j] = tempStateArray[i][j];
+        }
+    }
+
+    
 
 }

@@ -74,23 +74,68 @@ uint8_t mul(uint8_t a, uint8_t b){
     return 0;
 }
 
-void keyExpansion(uint8_t key[4][4]){
+void rotateWords(uint8_t word[4]){
+
+    uint8_t temp = word[0];
+
+    for (int i = 0; i < 3; i++){
+        word[i] = word[i + 1];
+    }
+
+    word[3] = temp;
+
+}
+
+void susbstitueWord(uint8_t word[4]){
+
+    for (int i = 0; i < 4; i++){
+
+        uint8_t row = word[i] / 16;
+        uint8_t col = word[i] % 16;
+
+        word[i] = SBox[row][col];
+
+    }
+
+}
+
+void keyExpansion(uint8_t key[4][4], uint8_t expandedKey[44][4]){
+
+    for (int i = 0; i < 4; i++){
+        for (int j = 0; j < 4; j++){
+            expandedKey[i][j] = key[j][i];
+        }
+    }
 
     for (int i = 4; i < 44; i++){
+
+        uint8_t temp[4];
+
+        for (int j = 0; j < 4; j++){
+            temp[j] = expandedKey[i - 1][j];
+        }
+
         if (i % 4 == 0){
 
+            rotateWords(temp);
+            susbstitueWord(temp);
 
+            temp[0] = temp[0] ^ Rcon[i/4 - 1];
 
         }
+        for (int j = 0; j < 4; j++){
+            expandedKey[i][j] = expandedKey[i-4][j] ^ temp[j];
+        }
+        
     }
     
 }
 
-void addRoundKey(uint8_t roundKey[4][4]){
+void addRoundKey(uint8_t roundKey[4][4], uint8_t state[4][4]){
 
     for (int i = 0; i < 4; i++){
         for (int j = 0; j < 4; j++){
-            stateArray[i][j] ^= roundKey[i][j];
+            state[i][j] ^= roundKey[i][j];
         }
     }
 
@@ -101,11 +146,9 @@ void substituteBytes(uint8_t state[4][4]){
     for (int i = 0; i < 4; i++){
         for (int j = 0; j < 4; j++){
 
-            uint8_t value = state[i][j];
-
             // See Byte Shifts aswell or direct mapping with 1D SBox and check if Variable Type uint8_t is better?
-            int row = value / 16;
-            int col = value % 16;
+            int row = state[i][j] / 16;
+            int col = state[i][j] % 16;
 
             state[i][j] = SBox[row][col];
 
@@ -161,6 +204,41 @@ void mixColumns(uint8_t state[4][4]){
         }
     }
 
-    
+}
+
+void getRoundKey(int round, uint8_t roundKey[4][4]){
+    for (int i = 0; i < 4; i++){
+        for (int j = 0; j < 4; j++){
+            roundKey[i][j] = expandedKey[4*round + j][i];
+        }
+    }
+}
+
+void aesEncrypt(uint8_t state[4][4]){
+
+    uint8_t roundKey[4][4];
+
+    keyExpansion(key, expandedKey);
+
+    getRoundKey(0, roundKey);
+    addRoundKey(roundKey, state);
+
+    for (int round = 1; round < 10; round++){
+        substituteBytes(state);
+        shiftRows(state);
+        mixColumns(state);
+
+        getRoundKey(round, roundKey);
+        addRoundKey(roundKey, state);
+
+    }
+
+    substituteBytes(state);
+    shiftRows(state);
+
+    getRoundKey(10, roundKey);
+    addRoundKey(roundKey, state);
 
 }
+
+
